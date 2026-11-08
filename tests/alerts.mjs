@@ -1,0 +1,16 @@
+import {readFile} from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const source = await readFile('Magik_Alert/js/alert_state.js', 'utf8');
+const {AlertState} = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'));
+let calls=[]; const s=new AlertState((...x)=>calls.push(x));
+const payload=(id,mode='on empty queue')=>({event_id:id,mode});
+s.start('a'); s.status(1); s.receive('a',1,payload('1')); s.status(0);
+assert.equal(calls.length,0); s.completed('a'); assert.equal(calls.length,1);
+s.receive('a',1,payload('1')); assert.equal(calls.length,1);
+s.start('b'); s.status(2); s.receive('b',1,payload('2')); s.completed('b');
+s.start('c'); s.receive('c',1,payload('3')); s.completed('c'); assert.equal(calls.length,1);
+s.status(0); assert.equal(calls.length,2); assert.equal(calls[1][1].event_id,'3');
+s.start('d'); s.status(1); s.receive('d',1,payload('4')); s.failed('d'); s.status(0); assert.equal(calls.length,2);
+s.start('e'); s.receive('e',1,payload('5')); s.reset(); s.status(0); assert.equal(calls.length,2);
+s.receive('f',1,payload('6','always')); assert.equal(calls.length,3);
+console.log('Queue tests passed: completion order, coalescing, deduplication, failure, reconnect, immediate mode.');
