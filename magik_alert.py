@@ -21,9 +21,18 @@ class AlertBase:
     @classmethod
     def IS_CHANGED(cls, **kwargs):
         return float('nan')
-    def result(self, data, mode, **settings):
-        return {'ui': {'magik_alert': [{'event_id': uuid.uuid4().hex,
-                'mode': first(mode, 'always'), **settings}]}, 'result': (data,)}
+    def result(self, data, alerts):
+        return {'ui': {'magik_alert': list(alerts)}, 'result': (data,)}
+    def sound_alert(self, mode, volume, file):
+        level = float(first(volume, 0.5))
+        level = min(1.0, max(0.0, level)) if math.isfinite(level) else 0.5
+        return {'event_id': uuid.uuid4().hex, 'kind': 'sound',
+                'mode': first(mode, 'always'), 'volume': level,
+                'file': str(first(file, 'notify.mp3') or 'notify.mp3')}
+    def notification_alert(self, mode, message):
+        return {'event_id': uuid.uuid4().hex, 'kind': 'notification',
+                'mode': first(mode, 'always'),
+                'message': str(first(message, 'Your notification has triggered.'))}
 
 class MagikPlaySound(AlertBase):
     @classmethod
@@ -34,10 +43,7 @@ class MagikPlaySound(AlertBase):
             'volume': ('FLOAT', {'default': 0.5, 'min': 0, 'max': 1, 'step': 0.05}),
             'file': ('STRING', {'default': 'notify.mp3', 'tooltip': 'Bundled filename, relative asset URL, or HTTP(S) URL; not a server filesystem path.'})}}
     def execute(self, any, mode, volume, file):
-        level = float(first(volume, 0.5))
-        level = min(1.0, max(0.0, level)) if math.isfinite(level) else 0.5
-        return self.result(any, mode, kind='sound', volume=level,
-                           file=str(first(file, 'notify.mp3') or 'notify.mp3'))
+        return self.result(any, [self.sound_alert(mode, volume, file)])
 
 class MagikNotification(AlertBase):
     @classmethod
@@ -47,7 +53,26 @@ class MagikNotification(AlertBase):
             'any': (ANY, {'tooltip': 'Forward unchanged.'}),
             'mode': (MODES, {'tooltip': 'Always: at this node. On empty queue: after successful execution and queue completion.'})}}
     def execute(self, any, message, mode):
-        return self.result(any, mode, kind='notification',
-                           message=str(first(message, 'Your notification has triggered.')))
-NODE_CLASS_MAPPINGS = {'MagikPlaySound': MagikPlaySound, 'MagikNotification': MagikNotification}
-NODE_DISPLAY_NAME_MAPPINGS = {'MagikPlaySound': 'Magik Play Sound', 'MagikNotification': 'Magik Notification'}
+        return self.result(any, [self.notification_alert(mode, message)])
+
+class MagikAlert(AlertBase):
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {'required': {
+            'any': (ANY, {'tooltip': 'Forward unchanged. Connect after the work to monitor.'}),
+            'sound': ('BOOLEAN', {'default': True, 'tooltip': 'Enable the sound alert.'}),
+            'sound_mode': (MODES, {'tooltip': 'Sound trigger: always at this node, or after successful execution and queue completion.'}),
+            'volume': ('FLOAT', {'default': 0.5, 'min': 0, 'max': 1, 'step': 0.05}),
+            'file': ('STRING', {'default': 'notify.mp3', 'tooltip': 'Bundled filename, relative asset URL, or HTTP(S) URL; not a server filesystem path.'}),
+            'notification': ('BOOLEAN', {'default': True, 'tooltip': 'Enable the desktop notification alert.'}),
+            'notification_mode': (MODES, {'tooltip': 'Notification trigger: always at this node, or after successful execution and queue completion.'}),
+            'message': ('STRING', {'default': 'Your notification has triggered.', 'multiline': True})}}
+    def execute(self, any, sound, sound_mode, volume, file, notification, notification_mode, message):
+        alerts = []
+        if first(sound, True):
+            alerts.append(self.sound_alert(sound_mode, volume, file))
+        if first(notification, True):
+            alerts.append(self.notification_alert(notification_mode, message))
+        return self.result(any, alerts)
+NODE_CLASS_MAPPINGS = {'MagikPlaySound': MagikPlaySound, 'MagikNotification': MagikNotification, 'MagikAlert': MagikAlert}
+NODE_DISPLAY_NAME_MAPPINGS = {'MagikPlaySound': 'Magik Play Sound', 'MagikNotification': 'Magik Notification', 'MagikAlert': 'Magik Alert'}
