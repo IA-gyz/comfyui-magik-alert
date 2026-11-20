@@ -1,7 +1,7 @@
 import { app } from '../../../scripts/app.js';
 import { api } from '../../../scripts/api.js';
 import { AlertState } from './alert_state.js';
-const types = new Set(['MagikPlaySound', 'MagikNotification']);
+const types = new Set(['MagikPlaySound', 'MagikNotification', 'MagikAlert']);
 function status(node, text, error = false) {
     if (node) { node._magikAlertStatus = { text, error }; node.setDirtyCanvas?.(true, true); }
     if (error) console.warn('[Magik Alert]', text);
@@ -65,14 +65,17 @@ app.registerExtension({
         const created = nodeType.prototype.onNodeCreated;
         nodeType.prototype.onNodeCreated = function () {
             const result = created?.apply(this, arguments);
-            if (nodeData.name === 'MagikNotification') this.addWidget('button', 'Enable notifications', null, async () => {
+            if (nodeData.name !== 'MagikPlaySound') this.addWidget('button', 'Enable notifications', null, async () => {
                 try { await permission(); status(this, 'Notifications enabled'); }
                 catch (error) { status(this, error.message, true); }
             }, { serialize: false });
             this.addWidget('button', 'Test', null, async () => {
-                if (nodeData.name === 'MagikPlaySound') {
-                    await deliver(this.id, {kind: 'sound', file: value(this, 'file', 'notify.mp3'), volume: value(this, 'volume', 0.5)});
-                } else {
+                const combined = nodeData.name === 'MagikAlert';
+                const testSound = nodeData.name !== 'MagikNotification' && (!combined || value(this, 'sound', true));
+                const testNotification = nodeData.name !== 'MagikPlaySound' && (!combined || value(this, 'notification', true));
+                if (!testSound && !testNotification) { status(this, 'Both alerts are off on this node.', true); return; }
+                if (testSound) await deliver(this.id, {kind: 'sound', file: value(this, 'file', 'notify.mp3'), volume: value(this, 'volume', 0.5)});
+                if (testNotification) {
                     try { await permission(); await deliver(this.id, {kind: 'notification', message: value(this, 'message', 'Test notification')}); }
                     catch (error) { status(this, error.message, true); }
                 }

@@ -13,4 +13,17 @@ s.status(0); assert.equal(calls.length,2); assert.equal(calls[1][1].event_id,'3'
 s.start('d'); s.status(1); s.receive('d',1,payload('4')); s.failed('d'); s.status(0); assert.equal(calls.length,2);
 s.start('e'); s.receive('e',1,payload('5')); s.reset(); s.status(0); assert.equal(calls.length,2);
 s.receive('f',1,payload('6','always')); assert.equal(calls.length,3);
-console.log('Queue tests passed: completion order, coalescing, deduplication, failure, reconnect, immediate mode.');
+s.start('g'); s.status(1);
+s.receive('g',1,{event_id:'7',mode:'on empty queue',kind:'sound'});
+s.receive('g',1,{event_id:'8',mode:'on empty queue',kind:'notification'});
+assert.equal(calls.length,3); s.completed('g'); s.status(0);
+assert.equal(calls.length,5);
+s.start('h'); s.receive('h',1,{event_id:'9',mode:'always',kind:'sound'});
+s.receive('h',1,{event_id:'10',mode:'on empty queue',kind:'notification'});
+assert.equal(calls.length,6); s.completed('h'); s.status(0); assert.equal(calls.length,7);
+s.start('i'); s.status(1);
+s.receive('i',1,{event_id:'11',mode:'on empty queue',kind:'sound',volume:0.1});
+s.receive('i',1,{event_id:'12',mode:'on empty queue',kind:'sound',volume:0.9});
+s.completed('i'); s.status(0);
+assert.equal(calls.length,8); assert.equal(calls[7][1].volume,0.9);
+console.log('Queue tests passed: completion order, coalescing, deduplication, failure, reconnect, immediate mode, combined node kinds and modes.');

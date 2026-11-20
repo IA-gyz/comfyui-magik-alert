@@ -11,7 +11,7 @@ export class AlertState {
         if (this.seen.size > 4096) this.seen.delete(this.seen.values().next().value);
         if (payload.mode !== 'on empty queue') { this.deliver(node, payload); return; }
         if (!id) return;
-        this.pending.set(String(node), {id, node, payload}); this.flush();
+        this.pending.set(String(node) + ':' + (payload.kind ?? ''), {id, node, payload}); this.flush();
     }
     completed(id) {
         if (!id) return;

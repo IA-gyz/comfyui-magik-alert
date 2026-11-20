@@ -1,6 +1,6 @@
 # Magik Alert
 
-Standalone ComfyUI package containing **Magik Play Sound** and **Magik Notification**, under **Magik / Alerts**. No pysssss installation, configuration, Python dependencies, downloads, or legacy frontend installation is needed.
+Standalone ComfyUI package containing **Magik Play Sound**, **Magik Notification**, and the combined **Magik Alert**, under **Magik / Alerts**. No pysssss installation, configuration, Python dependencies, downloads, or legacy frontend installation is needed.
 
 ## Installation
 
@@ -10,6 +10,7 @@ Extract `Magik_Alert` into `ComfyUI/custom_nodes/`, restart ComfyUI, and refresh
 
 Connect `any` after the work to monitor. The same data is forwarded unchanged, including lists and image batches.
 
+- **Magik Alert** combines both alerts in one node: the `sound` and `notification` toggles turn each alert on or off independently, and `sound_mode` / `notification_mode` give each its own trigger condition. Sound settings are `volume` and `file`; the notification text is `message`.
 - **always**: alert when this node executes, even if later nodes are still running.
 - **on empty queue**: arm the alert when this node executes; deliver after its prompt succeeds and the server reports an empty queue. Repeated executions of the same node coalesce to its latest settings. Different alert nodes remain independent. Failed/interrupted prompts discard their pending alerts; earlier successful prompts can still notify when the queue empties. Clearing queued jobs can also empty the queue.
 
